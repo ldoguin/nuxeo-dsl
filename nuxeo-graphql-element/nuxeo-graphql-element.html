@@ -1,0 +1,99 @@
+<link rel="import" href="../bower_components/nuxeo-elements/nuxeo-element.html">
+<link rel="import" href="../bower_components/nuxeo-elements/nuxeo-connection.html">
+
+<dom-module id="nuxeo-graphql">
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+    </style>
+     <nuxeo-connection id="nx" connection-id="{{connectionId}}"></nuxeo-connection>
+  </template>
+
+  <script>
+    /**
+     * `nuxeo-graphql-element`
+     * Allow to run authenticated graphql queries to Nuxeo
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class NuxeoGraphql extends Nuxeo.Element {
+      static get is() {
+        return 'nuxeo-graphql';
+      }
+      static get properties() {
+        return {
+            /** The id of a nuxeo-connection to use. */
+            connectionId: {
+              type: String,
+              value: '',
+            },
+
+          /** The Query or Mutatiom to send to the Api. */
+          query: {
+            type: String,
+            notify: true,
+          },
+
+          /** The last response from the Query or Mutation. */
+          lastResponse: {
+            type: JSON,
+            notify: true,
+            readOnly: true,
+            value: {}
+          },
+        }
+      }
+
+      ready() {
+        super.ready();
+        this.generateRequest();
+      }
+      /**
+       * Perform a request to the Api
+       */
+      async generateRequest() {
+        try {
+          var graphqlURL = this.$.nx.url + '/graphql';
+          var options= {
+            method: 'POST',
+            headers: {
+              accept : 'application/json',
+            },
+            json: true,
+            timeout: 30000,
+            cache: false,
+            resolveWithFullResponse: true,
+            url : graphqlURL,
+            body : this.query
+          };
+      
+      
+          // set default content-type
+          options.headers['Content-Type'] = 'application/json';
+          // const response = await this.$.nx.http(options);
+          const reqResponse = await this.$.nx.request();
+          const corsResponse = await reqResponse.execute(options);
+          const response = await corsResponse.json();
+          
+          this.set('lastResponse.data', response.data);
+          this.dispatchEvent(new CustomEvent('response', {
+            detail: response,
+            composed: true,
+            bubbles: true,
+          }));
+          return response.data;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      
+    }
+
+      window.customElements.define(NuxeoGraphQL.is, NuxeoGraphQL);
+      Nuxeo.Document = NuxeoGraphQL;
+  </script>
+</dom-module>
